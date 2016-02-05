@@ -6,6 +6,7 @@
 #include <sys/wait.h>    /* Wait for Process Termination */
 #include <errno.h>       /* Errors */
 #include <string.h>     /* Strings */
+#include <signal.h>
 
 int parseInput(char *input, char **args) {
 	char *token;
@@ -73,23 +74,6 @@ int readIptFromFile(int runInBG, char **args, int status) {
 	return execStatus;
 }
 
-/*int readIptFromPipe(int pipe, char **args, int commandTwo) {
-	FILE *fp;
-	int execStatus;
-	fp = fdopen(pipe, "r");
-	execStatus = execvp(*args[commandTwo],args[commandTwo]);
-}*/
-
-int writeOptToPipe(int pipe, char **args) {
-	FILE *fp;
-	int execStatus;
-
-	fp = fdopen(pipe, "w");
-	execStatus = execvp(*args,args);
-	fclose(fp);
-	return execStatus;
-}
-
 int main(int argc, char const *argv[])
 {
 	char *input = malloc(sizeof(char)*50);
@@ -103,7 +87,8 @@ int main(int argc, char const *argv[])
 	while(strcmp(input,"exit\n") != 0) {
 		runInBG = 0;
 		redirToFile = 0;
-		char **args = malloc(sizeof(char*)*10);
+		commandTwo = 0;
+		char **args = calloc(10,sizeof(char*));
 		childpid = fork();
 		if (childpid >= 0) { //fork success
 			status = parseInput(input,args);
@@ -127,26 +112,36 @@ int main(int argc, char const *argv[])
 					pipeChild = fork();
 					if (pipeChild >= 0) {
 						if (pipeChild == 0) {
-							close(pipefd[1]);
+							close(1);
+							dup(pipefd[1]);
+							close(pipefd[0]);
+							execStatus = execvp(*args,args);
 							exit(0);
 						}
 						else {
-							close(pipefd[0]);
-							execStatus = writeOptToPipe(pipefd[1],args);
+							close(0);
+							dup(pipefd[0]);
+							close(pipefd[1]);
+							execStatus = execvp(args[commandTwo],args+commandTwo);
 						}
 					}
 					else {
 						printf("Fork failed.\n");
 					}
 				}
-				else
+				else {
+					if (runInBG == 1) {
+						setpgid(0,0);
+					}
 					execStatus = execvp(*args,args);
+				}
 				if (execStatus < 0) {
 					printf("Command \"%s\" not found.\n", input);
 				}
 				exit(0);
 			}
 			else {
+				//may not need to do this
 				if (runInBG == 1) {
 					waitpid(-1,&status,WNOHANG | WUNTRACED);
 				}
