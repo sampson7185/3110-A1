@@ -1,1 +1,5 @@
-So far the program does nothing
+CIS3110 Assignment 1
+Author: Matthew Sampson (0888047)
+References: http://stackoverflow.com/questions/1618756/how-do-i-exec-a-process-in-the-background-in-c 
+Used this line: waitpid(-1,&status,WNOHANG | WUNTRACED); composes less than 1% of my program
+My program works for almost all the functions in section 1 & 2 except for background processes. It also doesn't properly close child processes if they are backgrounded. All other commands work except "grep if *.c", it says no such file. Piping and outputing/inputing from a file all works as expected. The program does not do anything from section 3.
